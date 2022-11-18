@@ -58,7 +58,7 @@ class EvoAlgo(object):
     
     @property
     def __env_name(self):
-        return self.fileini.split('/')[1].split('/')[0]
+        return self.fileini.split('/')[2].split('/')[0]
 
     @property
     def progress(self):

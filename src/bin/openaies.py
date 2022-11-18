@@ -236,7 +236,6 @@ class Algo(EvoAlgo):
 
             self.process_conditions()
             self.save_summary()
-            print(self.runstats.stages)
 
             print(
                 'Seed %d (%.1f%%) gen %d msteps %d bestfit %.2f bestgfit %.2f bestsam %.2f avg %.2f weightsize %.2f' %
@@ -252,4 +251,3 @@ class Algo(EvoAlgo):
         # print simulation time
         end_time = time.time()
         print('Simulation time: %dm%ds ' % (divmod(end_time - start_time, 60)))
-
