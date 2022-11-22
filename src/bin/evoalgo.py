@@ -56,7 +56,7 @@ class EvoAlgo(object):
         )
 
         self.cgen = None
-        self.test_limit_stop = 100
+        self.test_limit_stop = None
     
     @property
     def __env_name(self):
