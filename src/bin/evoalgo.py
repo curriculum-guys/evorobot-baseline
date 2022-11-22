@@ -12,10 +12,12 @@
 import random
 import numpy as np
 import time
-from datainterface.initialconditions import InitialConditions
-from datainterface.runstats import RunStats
-from datainterface.sampling import generate_conditions
-from datainterface.baseconditions import BaseConditions
+from data_interfaces.conditions.initial import InitialConditions
+from data_interfaces.stats.run import RunStats
+from curriculum_learning.curriculum.base_grid import generate_grid
+from data_interfaces.conditions.base import BaseConditions
+from data_interfaces.utils import set_root
+set_root('evorobot-baseline')
 
 class EvoAlgo(object):
     def __init__(self, env, policy, seed, fileini, filedir, icfeatures=[], statsfeatures=[]):
@@ -46,15 +48,15 @@ class EvoAlgo(object):
             statsfeatures
         )
 
-        self.base_conditions_data = generate_conditions()
+        self.base_grid = generate_grid()
         self.baseconditions = BaseConditions(
             self.__env_name,
             seed,
-            len(self.base_conditions_data)
+            len(self.base_grid)
         )
 
         self.cgen = None
-        self.test_limit_stop = None
+        self.test_limit_stop = 100
     
     @property
     def __env_name(self):
@@ -82,9 +84,9 @@ class EvoAlgo(object):
 
     def process_base_conditions(self):
         conditions = self.evaluate_center(
-            ntrials=len(self.base_conditions_data),
+            ntrials=len(self.base_grid),
             seed=self.evaluation_seed,
-            curriculum=self.base_conditions_data
+            curriculum=self.base_grid
         )
         performance = list(np.transpose(conditions)[-1])
         self.baseconditions.save_stg(performance, stage=self.cgen)
