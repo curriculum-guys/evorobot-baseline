@@ -35,19 +35,21 @@ class EvoAlgo(object):
         self.last_save_time = time.time()    # the last time in which data have been saved
         self.policy_trials = self.policy.ntrials
 
+        upload_reference = 'baseline'
+
         self.initialconditions = InitialConditions(
             self.__env_name,
             seed,
             icfeatures,
             trials=self.policy_trials,
-            upload_reference='baseline'
+            upload_reference=upload_reference
         )
 
         self.runstats = RunStats(
             self.__env_name,
             seed,
             statsfeatures,
-            upload_reference='baseline'
+            upload_reference=upload_reference
         )
 
         self.base_grid = generate_grid()
@@ -55,7 +57,7 @@ class EvoAlgo(object):
             self.__env_name,
             seed,
             len(self.base_grid),
-            upload_reference='baseline'
+            upload_reference=upload_reference
         )
 
         self.cgen = None
