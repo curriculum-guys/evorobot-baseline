@@ -39,20 +39,23 @@ class EvoAlgo(object):
             self.__env_name,
             seed,
             icfeatures,
-            trials=self.policy_trials
+            trials=self.policy_trials,
+            upload_reference='baseline'
         )
 
         self.runstats = RunStats(
             self.__env_name,
             seed,
-            statsfeatures
+            statsfeatures,
+            upload_reference='baseline'
         )
 
         self.base_grid = generate_grid()
         self.baseconditions = BaseConditions(
             self.__env_name,
             seed,
-            len(self.base_grid)
+            len(self.base_grid),
+            upload_reference='baseline'
         )
 
         self.cgen = None
