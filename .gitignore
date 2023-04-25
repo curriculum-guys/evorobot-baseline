@@ -132,3 +132,4 @@ logs/*
 
 *client_secrets.json
 *client_token.json
+*.cpp
