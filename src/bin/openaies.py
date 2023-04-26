@@ -109,11 +109,6 @@ class Algo(EvoAlgo):
         self.policy.env.reset()
         return [self.env.state(i) for i in range(6)].copy()
 
-    def generate_curriculum(self, trials=None):
-        # if self.specialist.qualified and self.its_time_for_specialist:
-        #     return self.curriculum_generator.generate(trials=trials)
-        pass
-
     def evaluate(self):
         cseed = self.seed + self.cgen * self.batchSize  # Set the seed for current generation (master and workers have the same seed)
         self.rs = np.random.RandomState(cseed)
@@ -122,7 +117,6 @@ class Algo(EvoAlgo):
 
         # evaluate samples
         candidate = np.arange(self.nparams, dtype=np.float64)
-        self.curriculum = self.generate_curriculum()
         for b in range(self.batchSize):
             for bb in range(2):
                 if (bb == 0):
@@ -221,6 +215,7 @@ class Algo(EvoAlgo):
         self.steps = 0
         print("Salimans: seed %d maxmsteps %d batchSize %d stepsize %lf noiseStdDev %lf wdecay %d symseed %d nparams %d" % (self.seed, self.maxsteps / 1000000, self.batchSize, self.stepsize, self.noiseStdDev, self.wdecay, self.symseed, self.nparams))
         while (self.steps < self.maxsteps):
+            self.generate_curriculum()
             self.evaluate()                           # evaluate samples
             self.optimize()                           # estimate the gradient and move the centroid in the gradient direction
 

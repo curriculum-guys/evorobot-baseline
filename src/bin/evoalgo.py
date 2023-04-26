@@ -10,6 +10,7 @@
  """
 
 import random
+import math
 import numpy as np
 import time
 from data_interfaces.conditions.initial import InitialConditions
@@ -52,13 +53,16 @@ class EvoAlgo(object):
             upload_reference=upload_reference
         )
 
-        self.base_grid = generate_grid()
+        self.grid_conditions = generate_grid(5)
         self.baseconditions = BaseConditions(
             self.__env_name,
             seed,
-            len(self.base_grid),
+            len(self.grid_conditions),
             upload_reference=upload_reference
         )
+        self.batch_size = len(self.grid_conditions) * 5
+        self.grid_batch = []
+        self.curriculum = None
 
         self.cgen = None
         self.test_limit_stop = None
@@ -87,12 +91,15 @@ class EvoAlgo(object):
         r = random.randint(1, n_conditions) if random_conditions else 1
         return [self.reset_env(i * r) for i in range(n_conditions)]
 
-    def process_base_conditions(self):
+    def process_grid_conditions(self):
         conditions = self.evaluate_center(
-            ntrials=len(self.base_grid),
+            ntrials=len(self.grid_conditions),
             seed=self.evaluation_seed,
-            curriculum=self.base_grid
+            curriculum=self.grid_conditions
         )
+        if self.progress > 10:
+            self.grid_batch += conditions
+            self.grid_batch = self.grid_batch[-self.batch_size:]
         performance = list(np.transpose(conditions)[-1])
         self.baseconditions.save_stg(performance, stage=self.cgen)
         return conditions
@@ -108,6 +115,30 @@ class EvoAlgo(object):
         self.policy.nn.normphase(0)
         self.policy.rollout(ntrials, seed=seed, curriculum=curriculum, save_env=True)
         return self.policy.rollout_env
+
+    def curriculum_subsets(self):
+        f = lambda x: x ** 3
+        d = [f(i)/1000 for i in range(0, 11)]
+        g = np.array(self.grid_batch)
+        grid_sorted = g[g[:,6].argsort()]
+
+        subsets = []
+        for i in range(self.policy_trials):
+            d_ = math.floor(d[i] * self.batch_size)
+            _d = math.floor(d[i+1] * self.batch_size)
+            subset = [list(e[:6]) for e in grid_sorted[d_:_d]]
+            subsets.append(subset)
+        return subsets
+
+    def generate_curriculum(self):
+        if self.progress > 10 and len(self.grid_batch) == self.batch_size:
+            subsets = self.curriculum_subsets()
+
+            curriculum = []
+            for subset in subsets:
+                i = random.randint(0, len(subset)-1)
+                curriculum.append(subset[i])
+            self.curriculum = curriculum
 
     def save_summary(self):
         data = [
@@ -127,7 +158,7 @@ class EvoAlgo(object):
 
     def process_conditions(self):
         self.process_initial_conditions()
-        self.process_base_conditions()
+        self.process_grid_conditions()
 
     def reset(self):
         self.bestfit = -999999999.0
