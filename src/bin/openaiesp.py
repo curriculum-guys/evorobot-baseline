@@ -137,7 +137,7 @@ class Algo(EvoAlgo):
                         normalizationdatacollected = True
                     else:
                         self.policy.nn.normphase(0)
-                    eval_rews, eval_length = self.policy.rollout(1, seed=(self.seed + 100000 + t))
+                    eval_rews, eval_length = self.policy.rollout(1, curriculum=self.curriculum, seed=(self.seed + 100000 + t))
                     gfit += eval_rews               
                     ceval += eval_length
                 self.updateBestg(gfit / self.policy.nttrials, self.bestsol)
@@ -155,7 +155,7 @@ class Algo(EvoAlgo):
                         candidate = self.center - self.samples[(self.id * self.n_worker_samples) + b,:] * self.noiseStdDev
                     self.policy.set_trainable_flat(candidate)
                     self.policy.nn.normphase(0)   # workers never collect normalization data
-                    eval_rews, eval_length = self.policy.rollout(self.policy.ntrials, seed=(self.seed + (self.cgen * self.batchSize) + (self.id * self.n_worker_samples) + b))
+                    eval_rews, eval_length = self.policy.rollout(self.policy.ntrials, curriculum=self.curriculum, seed=(self.seed + (self.cgen * self.batchSize) + (self.id * self.n_worker_samples) + b))
                     fitness_worker[b*2+bb] = eval_rews
                     ceval += eval_length
         ceval = np.asarray([ceval], dtype=np.int32)
@@ -234,6 +234,7 @@ class Algo(EvoAlgo):
             print("Salimans: seed %d maxmsteps %d batchSize %d stepsize %lf noiseStdDev %lf wdecay %d symseed %d nparams %d" % (self.seed, self.maxsteps / 1000000, self.batchSize, self.stepsize, self.noiseStdDev, self.wdecay, self.symseed, self.nparams))
 
         while (self.steps < self.maxsteps):
+            self.generate_curriculum()
             fitness_worker, weval = self.evaluate()   # evaluate sample (each worker evaluate a fraction of the population) 
             self.comm.Allgatherv(fitness_worker, [self.fitness, MPI.DOUBLE])                # brodcast fitness value to all workers
             self.comm.Allgatherv(weval, [self.evals, MPI.INT])                              # broadcast number of steps performed to all workers
@@ -255,12 +256,12 @@ class Algo(EvoAlgo):
 
             if self.rank == 0:
                 self.process_conditions()
+                self.save_summary()
 
                 print(
                     'Seed %d (%.1f%%) gen %d msteps %d bestfit %.2f bestgfit %.2f bestsam %.2f avg %.2f weightsize %.2f' %
                     (self.seed, self.progress, self.cgen, self.steps / 1000000, self.bestfit, self.bestgfit, self.bfit, self.avgfit, self.avecenter)
                 )
-                self.save_summary()
 
             if self.test_limit(self.test_limit_stop):
                 break;

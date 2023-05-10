@@ -54,12 +54,6 @@ class EvoAlgo(object):
         )
 
         self.grid_conditions = generate_grid(5)
-        self.baseconditions = BaseConditions(
-            self.__env_name,
-            seed,
-            len(self.grid_conditions),
-            upload_reference=upload_reference
-        )
         self.batch_size = len(self.grid_conditions) * 5
         self.grid_batch = []
         self.curriculum = None
@@ -100,8 +94,6 @@ class EvoAlgo(object):
         if self.progress > 10:
             self.grid_batch += conditions
             self.grid_batch = self.grid_batch[-self.batch_size:]
-        performance = list(np.transpose(conditions)[-1])
-        self.baseconditions.save_stg(performance, stage=self.cgen)
         return conditions
 
     def process_initial_conditions(self):
@@ -117,16 +109,20 @@ class EvoAlgo(object):
         return self.policy.rollout_env
 
     def curriculum_subsets(self):
+        e = len(self.grid_conditions)
+        p = lambda i: np.mean([self.grid_batch[i + e*j] for j in range(5)])
+        pg = [p(i) for i in range(e)]
+        n = self.policy_trials
         f = lambda x: x ** 3
-        d = [f(i)/1000 for i in range(0, 11)]
-        g = np.array(self.grid_batch)
-        grid_sorted = g[g[:,6].argsort()]
+        norm = lambda p: (p - min(pg))/(max(pg) - min(pg))
 
         subsets = []
-        for i in range(self.policy_trials):
-            d_ = math.floor(d[i] * self.batch_size)
-            _d = math.floor(d[i+1] * self.batch_size)
-            subset = [list(e[:6]) for e in grid_sorted[d_:_d]]
+        for i in range(n):
+            subset = []
+            for j in range(e):
+                ps = norm(p(j))
+                if ps > f(i/n) and ps <= f(i+1/n): 
+                    subset.append(self.grid_conditions[j])
             subsets.append(subset)
         return subsets
 
@@ -135,7 +131,9 @@ class EvoAlgo(object):
             subsets = self.curriculum_subsets()
 
             curriculum = []
-            for subset in subsets:
+            for s in range(self.policy_trials):
+                select_subset = lambda i: subsets[i] if len(subsets[i]) > 0 else select_subset(i+1)
+                subset = select_subset(s)
                 i = random.randint(0, len(subset)-1)
                 curriculum.append(subset[i])
             self.curriculum = curriculum
@@ -154,7 +152,6 @@ class EvoAlgo(object):
     def save_all(self):
         self.runstats.save()
         self.initialconditions.save()
-        self.baseconditions.save()
 
     def process_conditions(self):
         self.process_initial_conditions()
