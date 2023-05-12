@@ -15,7 +15,6 @@ import time
 from data_interfaces.conditions.initial import InitialConditions
 from data_interfaces.stats.run import RunStats
 from curriculum_learning.curriculum.base_grid import generate_grid
-from data_interfaces.conditions.base import BaseConditions
 from data_interfaces.utils import set_root
 set_root('evorobot-baseline')
 
@@ -52,13 +51,7 @@ class EvoAlgo(object):
             upload_reference=upload_reference
         )
 
-        self.base_grid = generate_grid()
-        self.baseconditions = BaseConditions(
-            self.__env_name,
-            seed,
-            len(self.base_grid),
-            upload_reference=upload_reference
-        )
+        self.base_grid = generate_grid(5)
 
         self.cgen = None
         self.test_limit_stop = None
@@ -87,16 +80,6 @@ class EvoAlgo(object):
         r = random.randint(1, n_conditions) if random_conditions else 1
         return [self.reset_env(i * r) for i in range(n_conditions)]
 
-    def process_base_conditions(self):
-        conditions = self.evaluate_center(
-            ntrials=len(self.base_grid),
-            seed=self.evaluation_seed,
-            curriculum=self.base_grid
-        )
-        performance = list(np.transpose(conditions)[-1])
-        self.baseconditions.save_stg(performance, stage=self.cgen)
-        return conditions
-
     def process_initial_conditions(self):
         self.generation_conditions = self.evaluate_center(self.policy.ntrials, self.evaluation_seed)
         self.initialconditions.save_stg(self.generation_conditions, self.cgen)
@@ -123,11 +106,9 @@ class EvoAlgo(object):
     def save_all(self):
         self.runstats.save()
         self.initialconditions.save()
-        self.baseconditions.save()
 
     def process_conditions(self):
         self.process_initial_conditions()
-        self.process_base_conditions()
 
     def reset(self):
         self.bestfit = -999999999.0
