@@ -150,7 +150,7 @@ class EvoAlgo(object):
             ntrials = self.policy.nttrials
         else:
             ntrials = self.policy.ntrials
-        eval_rews, eval_length = self.policy.rollout(ntrials, seed=self.policy.get_seed + 100000)
+        eval_rews, eval_length = self.policy.rollout(ntrials, progress=0, seed=self.policy.get_seed + 100000)
         print("Postevauation: Average Fitness %.2f Total Steps %d" % (eval_rews, eval_length))
         self.save_test_stats(eval_rews, eval_length)
 
