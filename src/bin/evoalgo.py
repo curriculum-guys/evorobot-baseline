@@ -89,7 +89,7 @@ class EvoAlgo(object):
         candidate = self.center
         self.policy.set_trainable_flat(candidate)
         self.policy.nn.normphase(0)
-        self.policy.rollout(ntrials, seed=seed, curriculum=curriculum, save_env=True)
+        self.policy.rollout(ntrials, seed=seed, progress=self.progress, save_env=True)
         return self.policy.rollout_env
 
     def save_summary(self):

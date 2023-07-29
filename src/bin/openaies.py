@@ -132,7 +132,7 @@ class Algo(EvoAlgo):
                 self.policy.set_trainable_flat(candidate)
                 self.policy.nn.normphase(0) # normalization data is collected during the post-evaluation of the best sample of the previous generation
             
-                eval_rews, eval_length = self.policy.rollout(self.policy.ntrials, curriculum=self.curriculum, seed=(self.seed + (self.cgen * self.batchSize) + b))
+                eval_rews, eval_length = self.policy.rollout(self.policy.ntrials, progress=self.progress, seed=(self.seed + (self.cgen * self.batchSize) + b))
 
                 self.samplefitness[b*2+bb] = eval_rews
                 self.steps += eval_length
@@ -163,7 +163,7 @@ class Algo(EvoAlgo):
                     self.normalizationdatacollected = True
                 else:
                     self.policy.nn.normphase(0)
-                eval_rews, eval_length = self.policy.rollout(1, seed=(self.seed + 100000 + t))
+                eval_rews, eval_length = self.policy.rollout(1, progress=self.progress, seed=(self.seed + 100000 + t))
                 gfit += eval_rews
                 self.steps += eval_length
             gfit /= self.policy.nttrials    
@@ -223,6 +223,8 @@ class Algo(EvoAlgo):
         while (self.steps < self.maxsteps):
             self.evaluate()                           # evaluate samples
             self.optimize()                           # estimate the gradient and move the centroid in the gradient direction
+
+            self.policy.bins_distributions()
 
             self.stat = np.append(self.stat, [self.steps, self.bestfit, self.bestgfit, self.bfit, self.avgfit, self.avecenter])  # store performance across generations
 

@@ -17,6 +17,42 @@ import numpy as np
 import configparser
 import time
 import sys
+import itertools
+
+def create_states():
+    # init list of possible starting positions
+    stateRanges_0 = 1.944
+    stateRanges_1 = 1.215
+    stateRanges_2 = 0.10472
+    stateRanges_3 = 0.135088
+    stateRanges_4 = 0.10472
+    stateRanges_5 = 0.135088
+    states_0 = np.linspace(-stateRanges_0, stateRanges_0, 5)
+    states_1 = np.linspace(-stateRanges_1, stateRanges_1, 5)
+    states_2 = np.linspace(-stateRanges_2, stateRanges_2, 5)
+    states_3 = np.linspace(-stateRanges_3, stateRanges_3, 5)
+    states_4 = np.linspace(-stateRanges_4, stateRanges_4, 5)
+    states_5 = np.linspace(-stateRanges_5, stateRanges_5, 5)
+    states = [states_0, states_1, states_2, states_3, states_4, states_5]
+
+    return  states
+
+def create_test_states():
+    # init list of possible starting positions
+    stateRanges_0 = 1.944
+    stateRanges_1 = 1.215
+    stateRanges_2 = 0.10472
+    stateRanges_3 = 0.135088
+    stateRanges_4 = 0.10472
+    stateRanges_5 = 0.135088
+    states_0 = np.linspace(-stateRanges_0, stateRanges_0, 3)
+    states_1 = np.linspace(-stateRanges_1, stateRanges_1, 3)
+    states_2 = np.linspace(-stateRanges_2, stateRanges_2, 3)
+    states_3 = np.linspace(-stateRanges_3, stateRanges_3, 3)
+    states_4 = np.linspace(-stateRanges_4, stateRanges_4, 3)
+    states_5 = np.linspace(-stateRanges_5, stateRanges_5, 3)
+    states = [states_0, states_1, states_2, states_3, states_4, states_5]
+    return  states
 
 class Policy(object):
     def __init__(self, env, fileini, seed, test):
@@ -86,12 +122,70 @@ class Policy(object):
             for i in range(self.nmorphparams):
                 self.params[(self.nparams - self.nmorphparams + i)] = 0.0
             self.env.setParams(self.params[-self.nmorphparams:])
-         
+
+        self.categorized_positions = []
+
+        states = create_states()
+        self.states_list = list(itertools.product(*states))
+
+        test_states = create_test_states()
+        self.test_list = list(itertools.product(*test_states))
+
+         #= np.zeros(len(self.states_list))
+
+        self.states_score = [np.array([0]) for _ in range(len(self.states_list))]
+        self.vec_distributions = np.linspace(0,len(self.states_list),11,dtype=np.int32)
+        self.choose = False
+
     def reset(self):
         self.nn.seed(self.seed)             # set the seed of evonet
         self.nn.initWeights()               # call the evonet function that initialize the parameters
         if (self.normalize == 1):           # re-initialize the normalization vector
             self.nn.resetNormalizationVectors()
+
+    def update_scores(self,trial_position,reward):
+        if self.states_score[trial_position][0] == 0:
+            self.states_score[trial_position] = np.array([reward])
+        else:
+            self.states_score[trial_position] = np.append(self.states_score[trial_position],reward)
+            if len(self.states_score[trial_position]) > 5:
+                self.states_score[trial_position] = np.delete(self.states_score[trial_position],0)
+
+    def average_scores(self):
+        self.ave = [np.mean(j) for j in self.states_score]
+        self.sort_distributions = np.argsort(self.ave)
+
+    def bins_distributions(self):
+        self.average_scores()
+
+        rescaled_ave = np.interp(self.ave,(np.min(self.ave),np.max(self.ave)),(0,1))
+
+        bins = np.linspace(np.min(rescaled_ave), np.max(rescaled_ave), 11)
+        bins = bins**2
+        bins[-1] =1
+
+        self.categorized_positions = []
+        for j in range(1,11):
+            self.categorized_positions.append(np.where((rescaled_ave>=bins[j-1])& (rescaled_ave<=bins[j]))[0])
+
+    def from_categories_get_positions(self):
+        trials = []
+        for j in range(len(self.categorized_positions)):
+            if len(self.categorized_positions[j]) < 10:
+                tmp = self.categorized_positions[j][np.random.choice(len(self.categorized_positions[j]))]
+            else:
+                tmp = np.random.choice(len(self.states_list),1,replace=False)[0]
+
+            trials.append(tmp)
+        
+        return trials
+
+    def get_positions(self):
+        trials = []
+        for j in range(1,len(self.vec_distributions)):
+            to_choose = self.sort_distributions[self.vec_distributions[j-1]:self.vec_distributions[j]]
+            trials.append(to_choose[np.random.choice(self.vec_distributions[j]-self.vec_distributions[j-1],1)][0])
+        return trials
 
     # virtual function, implemented in sub-classes
     def rollout(self, render=False, seed=None):
@@ -340,7 +434,7 @@ class ErPolicy(Policy):
         env.copyDone(self.done)                  # pass the pointer to the done vector to the Er environment    
 
     # === Rollouts/training ===
-    def rollout(self, ntrials, curriculum=None, seed=None, save_env=False):
+    def rollout(self, ntrials, progress, seed=None, save_env=False):
         rews = 0.0                               # summed reward
         steps = 0                                # steps performed
         self.rollout_env = []
@@ -354,11 +448,21 @@ class ErPolicy(Policy):
             self.objs[0] = -1
             self.env.copyDobj(self.objs)
             #import renderWorld
+        if progress > 10:
+            trials = self.from_categories_get_positions()
+        else:
+            trials = np.random.choice(len(self.states_list), ntrials, replace=False)
 
         for trial in range(ntrials):
-            env = curriculum[trial] if curriculum else None
-            self.env.reset(env)                     # reset the environment at the beginning of a new episode
+            # Reset environment
+            if progress > 10:
+                init_state = self.states_list[trials[trial]]
+                self.env.reset(np.float32(init_state))
+            else:
+                self.env.reset()
+
             init_cond = [self.env.state(i) for i in range(6)].copy()   # get initial conditions
+
             self.nn.resetNet()                   # reset the activation of the neurons (necessary for recurrent policies)
             rew = 0.0
             t = 0
@@ -377,6 +481,7 @@ class ErPolicy(Policy):
 
             steps += t
             rews += rew
+            self.update_scores(trials[trial], reward=rew/1000)
 
             if save_env:
                 self.rollout_env.append(init_cond + [rew])  # save rollout conditions
