@@ -226,7 +226,7 @@ void Problem::reset(float* env = {})
     // Initialize state
     if(env == 0){
         for (s = 0; s < NUM_STATES; s++)
-            m_state[s] = (m_rng->getInt(-2, 2)) * (stateRanges[s]/2);
+            m_state[s] = m_rng->getDouble(-stateRanges[s], stateRanges[s]);
     } else {
         for (s = 0; s < NUM_STATES; s++)
             m_state[s] = env[s];
