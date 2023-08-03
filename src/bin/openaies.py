@@ -88,7 +88,6 @@ class Algo(EvoAlgo):
         self.nparams = len(self.center)          # number of adaptive parameters
         self.cgen = 0                            # currrent generation
         self.samplefitness = zeros(self.batchSize * 2) # the fitness of the samples
-        self.sampleconditions = [None] * (self.batchSize * 2)
         self.samples = None                      # the random samples
         self.m = zeros(self.nparams)             # Adam: momentum vector 
         self.v = zeros(self.nparams)             # Adam: second momentum vector (adam)
