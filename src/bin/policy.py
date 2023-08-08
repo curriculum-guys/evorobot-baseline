@@ -19,6 +19,9 @@ import time
 import sys
 import itertools
 
+def difficulty_function(bins):
+    return bins ** 2
+
 def create_states():
     # init list of possible starting positions
     stateRanges_0 = 1.944
@@ -161,8 +164,9 @@ class Policy(object):
         rescaled_ave = np.interp(self.ave,(np.min(self.ave),np.max(self.ave)),(0,1))
 
         bins = np.linspace(np.min(rescaled_ave), np.max(rescaled_ave), 11)
-        bins = bins**2
-        bins[-1] =1
+        # Here we define the difficulty function
+        bins = difficulty_function(bins)
+        bins[-1] = 1
 
         self.categorized_positions = []
         for j in range(1,11):

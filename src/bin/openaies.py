@@ -209,7 +209,7 @@ class Algo(EvoAlgo):
         self.avecenter = np.average(np.absolute(self.center))      
 
     def test_limit(self, limit=None):
-        if limit and self.cgen == limit:
+        if limit and self.progress == limit:
             return True
 
     def run(self):
