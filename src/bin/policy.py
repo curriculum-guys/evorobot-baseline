@@ -458,6 +458,14 @@ class ErPolicy(Policy):
             trials = np.random.choice(len(self.states_list), ntrials, replace=False)
 
         for trial in range(ntrials):
+            if self.normalize:
+                # if normalize=1, occasionally we store data for input normalization
+                if np.random.uniform(low=0.0, high=1.0) < 0.01:
+                    normphase = 1
+                    self.nn.normphase(1)
+                else:
+                    normphase = 0
+
             # Reset environment
             if progress > 10:
                 init_state = self.states_list[trials[trial]]
@@ -482,6 +490,10 @@ class ErPolicy(Policy):
                     break
             if (self.test > 0):
                 print("Trial %d Fit %.2f Steps %d " % (trial, rew, t))
+
+            # if we normalize, we might need to stop store data for normalization
+            if self.normalize and normphase > 0:
+                self.nn.normphase(0)
 
             steps += t
             rews += rew
