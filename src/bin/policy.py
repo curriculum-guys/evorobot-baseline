@@ -167,16 +167,23 @@ class Policy(object):
         bins[-1] = 1
 
         self.categorized_positions = []
-        for j in range(1,11):
-            self.categorized_positions.append(np.where((rescaled_ave>=bins[j-1])& (rescaled_ave<=bins[j]))[0])
+        for j in range(0,10):
+            self.categorized_positions.append(np.where((rescaled_ave>bins[j]) & (rescaled_ave<=bins[j+1]))[0])
 
-    def from_categories_get_positions(self):
+    def from_categories_get_positions(self, seed):
         trials = []
+
         for j in range(len(self.categorized_positions)):
-            if len(self.categorized_positions[j]) < 10:
+            if len(self.categorized_positions[j]) < 10 and len(self.categorized_positions[j]) > 0:
                 tmp = self.categorized_positions[j][np.random.choice(len(self.categorized_positions[j]))]
             else:
-                tmp = np.random.choice(len(self.states_list),1,replace=False)[0]
+                if len(self.categorized_positions) > j+1 and len(self.categorized_positions[j+1]) > 0:
+                    tmp = self.categorized_positions[j+1][np.random.choice(len(self.categorized_positions[j+1]))]
+                elif len(self.categorized_positions) < j-1 and len(self.categorized_positions[j-1]) > 0:
+                    tmp = self.categorized_positions[j-1][np.random.choice(len(self.categorized_positions[j-1]))]
+                else:
+                    np.random.seed(seed)
+                    tmp = np.random.choice(len(self.states_list),1,replace=False)[0]
 
             trials.append(tmp)
         
@@ -297,7 +304,7 @@ class ErPolicy(Policy):
             self.env.copyDobj(self.objs)
             #import renderWorld
         if progress > 10:
-            trials = self.from_categories_get_positions()
+            trials = self.from_categories_get_positions(seed)
         else:
             trials = np.random.choice(len(self.states_list), ntrials, replace=False)
 
