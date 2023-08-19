@@ -54,8 +54,8 @@ class EvoAlgo(object):
         self.base_grid = generate_grid(5)
 
         self.cgen = None
-        self.test_limit_stop = None
-    
+        self.test_limit_stop = 20
+
     @property
     def __env_name(self):
         return self.fileini.split('/')[2].split('/')[0]
@@ -104,8 +104,8 @@ class EvoAlgo(object):
         self.runstats.save_stg(data, self.cgen)
 
     def save_all(self):
-        self.runstats.save()
         self.initialconditions.save()
+        self.runstats.save()
 
     def process_conditions(self):
         self.process_initial_conditions()

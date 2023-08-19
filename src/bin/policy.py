@@ -20,7 +20,7 @@ import sys
 import itertools
 
 def difficulty_function(bins):
-    return bins ** 2
+    return bins ** 3
 
 def create_states():
     # init list of possible starting positions
@@ -134,8 +134,6 @@ class Policy(object):
         test_states = create_test_states()
         self.test_list = list(itertools.product(*test_states))
 
-         #= np.zeros(len(self.states_list))
-
         self.states_score = [np.array([0]) for _ in range(len(self.states_list))]
         self.vec_distributions = np.linspace(0,len(self.states_list),11,dtype=np.int32)
         self.choose = False
@@ -184,13 +182,6 @@ class Policy(object):
         
         return trials
 
-    def get_positions(self):
-        trials = []
-        for j in range(1,len(self.vec_distributions)):
-            to_choose = self.sort_distributions[self.vec_distributions[j-1]:self.vec_distributions[j]]
-            trials.append(to_choose[np.random.choice(self.vec_distributions[j]-self.vec_distributions[j-1],1)][0])
-        return trials
-
     # virtual function, implemented in sub-classes
     def rollout(self, render=False, seed=None):
         raise NotImplementedError
@@ -203,7 +194,6 @@ class Policy(object):
 
     def get_trainable_flat(self):
         return self.params                  # return the evonet vector of parameters
-
 
     def readConfig(self):                   # load hyperparameters from the [POLICY] section of the ini file
         
@@ -276,6 +266,88 @@ class Policy(object):
     @property
     def get_seed(self):
         return self.seed
+
+# ER policies use float32 observation and action vectors (evonet also use float32) 
+# use the same observation, action and done vectors (no need to re-pass the pointer)
+# Use renderWorld to show the activation of neurons
+class ErPolicy(Policy):
+    def __init__(self, env, filename, seed, test):
+        self.ninputs = env.ninputs               # only works for problems with continuous observation space
+        self.noutputs = env.noutputs             # only works for problems with continuous observation space
+        Policy.__init__(self, env, filename, seed, test)
+        self.done = np.arange(1, dtype=np.int32) # allocate a done vector
+        env.copyObs(self.ob)                     # pass the pointer to the observation vector to the Er environment
+        env.copyAct(self.ac)                     # pass the pointer to the action vector to the Er environment
+        env.copyDone(self.done)                  # pass the pointer to the done vector to the Er environment    
+
+    # === Rollouts/training ===
+    def rollout(self, ntrials, progress, seed=None, save_env=False):
+        rews = 0.0                               # summed reward
+        steps = 0                                # steps performed
+        self.rollout_env = []
+
+        if seed is not None:
+            self.env.seed(seed)                  # set the seed of the environment that impacts on the initialization of the robot/environment
+            self.nn.seed(seed)                   # set the seed of evonet that impacts on the noise eventually added to the activation of the neurons
+            np.random.seed(seed)
+
+        if (self.test > 0):                      # if the policy is used to test a trained agent and to visualize the neurons, we need initialize the graphic render  
+            self.objs = np.arange(1000, dtype=np.float64) 
+            self.objs[0] = -1
+            self.env.copyDobj(self.objs)
+            #import renderWorld
+        if progress > 10:
+            trials = self.from_categories_get_positions()
+        else:
+            trials = np.random.choice(len(self.states_list), ntrials, replace=False)
+
+        for trial in range(ntrials):
+            if self.normalize:
+                # if normalize=1, occasionally we store data for input normalization
+                if np.random.uniform(low=0.0, high=1.0) < 0.01:
+                    normphase = 1
+                    self.nn.normphase(1)
+                else:
+                    normphase = 0
+
+            init_state = self.states_list[trials[trial]]
+            self.env.reset(np.float32(init_state))
+
+            init_cond = [self.env.state(i) for i in range(6)].copy()   # get initial conditions
+
+            self.nn.resetNet()                   # reset the activation of the neurons (necessary for recurrent policies)
+            rew = 0.0
+            t = 0
+            while t < self.maxsteps:
+                self.nn.updateNet()              # update the activation of the policy
+                rew += self.env.step()           # perform a simulation step
+                t += 1
+                if (self.test > 0):
+                    self.env.render()
+                    info = 'Trial %d Step %d Fit %.2f %.2f' % (trial, t, rew, rews)
+                    #renderWorld.update(self.objs, info, self.ob, self.ac, self.nact)
+                if self.done:
+                    break
+            if (self.test > 0):
+                print("Trial %d Fit %.2f Steps %d " % (trial, rew, t))
+
+            # if we normalize, we might need to stop store data for normalization
+            if self.normalize and normphase > 0:
+                self.nn.normphase(0)
+
+            steps += t
+            rews += rew
+
+            if save_env:
+                self.rollout_env.append(init_cond + [rew])  # save rollout conditions
+
+            self.update_scores(trials[trial], reward=rew/1000)
+
+        rews /= ntrials                         # Normalize reward by the number of trials
+        if (self.test > 0 and ntrials > 1):
+            print("Average Fit %.2f Steps %.2f " % (rews, steps/float(ntrials)))
+
+        return rews, steps
 
 # Bullet use float32 values for observation and action vectors (the same type used by evonet)
 # create a new observation vector each step, consequently we need to pass the pointer to evonet each step 
@@ -420,90 +492,4 @@ class GymPolicyDiscr(Policy):
         rews /= ntrials          # Normalize reward by the number of trials
         if (self.test > 0 and ntrials > 1):
             print("Average Fit %.2f Steps %d " % (rews, steps/float(ntrials)))
-        return rews, steps
-
-
-import pandas as pd
-# ER policies use float32 observation and action vectors (evonet also use float32) 
-# use the same observation, action and done vectors (no need to re-pass the pointer)
-# Use renderWorld to show the activation of neurons
-class ErPolicy(Policy):
-    def __init__(self, env, filename, seed, test):
-        self.ninputs = env.ninputs               # only works for problems with continuous observation space
-        self.noutputs = env.noutputs             # only works for problems with continuous observation space
-        Policy.__init__(self, env, filename, seed, test)
-        self.done = np.arange(1, dtype=np.int32) # allocate a done vector
-        env.copyObs(self.ob)                     # pass the pointer to the observation vector to the Er environment
-        env.copyAct(self.ac)                     # pass the pointer to the action vector to the Er environment
-        env.copyDone(self.done)                  # pass the pointer to the done vector to the Er environment    
-
-    # === Rollouts/training ===
-    def rollout(self, ntrials, progress, seed=None, save_env=False):
-        rews = 0.0                               # summed reward
-        steps = 0                                # steps performed
-        self.rollout_env = []
-
-        if seed is not None:
-            self.env.seed(seed)                  # set the seed of the environment that impacts on the initialization of the robot/environment
-            self.nn.seed(seed)                   # set the seed of evonet that impacts on the noise eventually added to the activation of the neurons
-
-        if (self.test > 0):                      # if the policy is used to test a trained agent and to visualize the neurons, we need initialize the graphic render  
-            self.objs = np.arange(1000, dtype=np.float64) 
-            self.objs[0] = -1
-            self.env.copyDobj(self.objs)
-            #import renderWorld
-        if progress > 10:
-            trials = self.from_categories_get_positions()
-        else:
-            trials = np.random.choice(len(self.states_list), ntrials, replace=False)
-
-        for trial in range(ntrials):
-            if self.normalize:
-                # if normalize=1, occasionally we store data for input normalization
-                if np.random.uniform(low=0.0, high=1.0) < 0.01:
-                    normphase = 1
-                    self.nn.normphase(1)
-                else:
-                    normphase = 0
-
-            # Reset environment
-            if progress > 10:
-                init_state = self.states_list[trials[trial]]
-                self.env.reset(np.float32(init_state))
-            else:
-                self.env.reset()
-
-            init_cond = [self.env.state(i) for i in range(6)].copy()   # get initial conditions
-
-            self.nn.resetNet()                   # reset the activation of the neurons (necessary for recurrent policies)
-            rew = 0.0
-            t = 0
-            while t < self.maxsteps:
-                self.nn.updateNet()              # update the activation of the policy
-                rew += self.env.step()           # perform a simulation step
-                t += 1
-                if (self.test > 0):
-                    self.env.render()
-                    info = 'Trial %d Step %d Fit %.2f %.2f' % (trial, t, rew, rews)
-                    #renderWorld.update(self.objs, info, self.ob, self.ac, self.nact)
-                if self.done:
-                    break
-            if (self.test > 0):
-                print("Trial %d Fit %.2f Steps %d " % (trial, rew, t))
-
-            # if we normalize, we might need to stop store data for normalization
-            if self.normalize and normphase > 0:
-                self.nn.normphase(0)
-
-            steps += t
-            rews += rew
-            self.update_scores(trials[trial], reward=rew/1000)
-
-            if save_env:
-                self.rollout_env.append(init_cond + [rew])  # save rollout conditions
-
-        rews /= ntrials                         # Normalize reward by the number of trials
-        if (self.test > 0 and ntrials > 1):
-            print("Average Fit %.2f Steps %.2f " % (rews, steps/float(ntrials)))
-
         return rews, steps

@@ -560,7 +560,6 @@ class ErPolicy(Policy):
             # Reset environment
             # self.env.reset()
 
-
             init_state = self.test_list[trial]
 
             self.env.startState(np.float32(init_state))

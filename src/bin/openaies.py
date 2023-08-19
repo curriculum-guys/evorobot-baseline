@@ -209,7 +209,7 @@ class Algo(EvoAlgo):
         self.avecenter = np.average(np.absolute(self.center))      
 
     def test_limit(self, limit=None):
-        if limit and self.progress == limit:
+        if limit and self.progress >= limit:
             return True
 
     def run(self):
@@ -220,10 +220,10 @@ class Algo(EvoAlgo):
         self.steps = 0
         print("Salimans: seed %d maxmsteps %d batchSize %d stepsize %lf noiseStdDev %lf wdecay %d symseed %d nparams %d" % (self.seed, self.maxsteps / 1000000, self.batchSize, self.stepsize, self.noiseStdDev, self.wdecay, self.symseed, self.nparams))
         while (self.steps < self.maxsteps):
+            self.policy.bins_distributions()
+
             self.evaluate()                           # evaluate samples
             self.optimize()                           # estimate the gradient and move the centroid in the gradient direction
-
-            self.policy.bins_distributions()
 
             self.stat = np.append(self.stat, [self.steps, self.bestfit, self.bestgfit, self.bfit, self.avgfit, self.avecenter])  # store performance across generations
 
