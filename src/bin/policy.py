@@ -177,13 +177,8 @@ class Policy(object):
             if len(self.categorized_positions[j]) < 10 and len(self.categorized_positions[j]) > 0:
                 tmp = self.categorized_positions[j][np.random.choice(len(self.categorized_positions[j]))]
             else:
-                if len(self.categorized_positions) > j+1 and len(self.categorized_positions[j+1]) > 0:
-                    tmp = self.categorized_positions[j+1][np.random.choice(len(self.categorized_positions[j+1]))]
-                elif len(self.categorized_positions) < j-1 and len(self.categorized_positions[j-1]) > 0:
-                    tmp = self.categorized_positions[j-1][np.random.choice(len(self.categorized_positions[j-1]))]
-                else:
-                    np.random.seed(seed)
-                    tmp = np.random.choice(len(self.states_list),1,replace=False)[0]
+                np.random.seed(seed)
+                tmp = np.random.choice(len(self.states_list),1,replace=False)[0]
 
             trials.append(tmp)
         
@@ -303,6 +298,7 @@ class ErPolicy(Policy):
             self.objs[0] = -1
             self.env.copyDobj(self.objs)
             #import renderWorld
+
         if progress > 10:
             trials = self.from_categories_get_positions(seed)
         else:
