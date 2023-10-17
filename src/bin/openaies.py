@@ -26,8 +26,7 @@ warnings.filterwarnings("ignore")
 
 class Algo(EvoAlgo):
     def __init__(self, env, policy, seed, fileini, filedir):
-        icfeatures = ['x1', 'x2', 'a1', 'a2', 'b1', 'b2', 'performance']
-        EvoAlgo.__init__(self, env, policy, seed, fileini, filedir, icfeatures=icfeatures)
+        EvoAlgo.__init__(self, env, policy, seed, fileini, filedir)
 
     def loadhyperparameters(self):
         if os.path.isfile(self.fileini):
@@ -226,10 +225,6 @@ class Algo(EvoAlgo):
             self.optimize()                           # estimate the gradient and move the centroid in the gradient direction
 
             self.stat = np.append(self.stat, [self.steps, self.bestfit, self.bestgfit, self.bfit, self.avgfit, self.avecenter])  # store performance across generations
-
-            if ((time.time() - last_save_time) > (self.saveeach * 60)):
-                self.save_best_stats()
-                last_save_time = time.time()
 
             if self.normalizationdatacollected:
                 self.policy.nn.updateNormalizationVectors()  # update the normalization vectors with the new data collected

@@ -27,8 +27,7 @@ warnings.filterwarnings("ignore")
 
 class Algo(EvoAlgo):
     def __init__(self, env, policy, seed, fileini, filedir):
-        icfeatures = ['x1', 'x2', 'a1', 'a2', 'b1', 'b2', 'performance']
-        EvoAlgo.__init__(self, env, policy, seed, fileini, filedir, icfeatures=icfeatures)
+        EvoAlgo.__init__(self, env, policy, seed, fileini, filedir)
 
     def loadhyperparameters(self):
         if os.path.isfile(self.fileini):

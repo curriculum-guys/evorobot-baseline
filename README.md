@@ -10,6 +10,7 @@ sudo apt-get install python-dev python3-dev
 sudo apt-get install libgsl-dev
 sudo apt install libopenmpi-dev
 sudo apt-get install g++
+sudo apt-get install swig
 ```
 After that, make shure to create a virtual environment in the root directory:
 ```bash

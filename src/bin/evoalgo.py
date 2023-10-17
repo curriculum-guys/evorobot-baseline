@@ -18,8 +18,13 @@ from curriculum_learning.curriculum.base_grid import generate_grid
 from data_interfaces.utils import set_root
 set_root('evorobot-baseline')
 
+ENVIRONMENT_FEATURES = dict(
+    xdpole=6,
+    xbipedal=200
+)
+
 class EvoAlgo(object):
-    def __init__(self, env, policy, seed, fileini, filedir, icfeatures=[], statsfeatures=[]):
+    def __init__(self, env, policy, seed, fileini, filedir):
         self.env = env                       # the environment
         self.policy = policy                 # the policy
         self.seed = seed                     # the seed of the experiment
@@ -34,27 +39,35 @@ class EvoAlgo(object):
         self.last_save_time = time.time()    # the last time in which data have been saved
         self.policy_trials = self.policy.ntrials
 
+        self.cgen = None
+        self.test_limit_stop = None
+
+        env_features = self._get_env_features()
+        self.initialize_data_managers(env_features=env_features)
+
+    def _get_env_features(self):
+        n_features = ENVIRONMENT_FEATURES[self.__env_name]
+        features = [f"x{i}" for i in range(n_features)] + ["performance"]
+        return features
+
+    def initialize_data_managers(self, env_features=[], stats_features=[]):
+        self.base_grid = generate_grid(5)
         upload_reference = 'baseline'
 
         self.initialconditions = InitialConditions(
             self.__env_name,
-            seed,
-            icfeatures,
+            self.seed,
+            env_features,
             trials=self.policy_trials,
             upload_reference=upload_reference
         )
 
         self.runstats = RunStats(
             self.__env_name,
-            seed,
-            statsfeatures,
+            self.seed,
+            stats_features,
             upload_reference=upload_reference
         )
-
-        self.base_grid = generate_grid(5)
-
-        self.cgen = None
-        self.test_limit_stop = 20
 
     @property
     def __env_name(self):

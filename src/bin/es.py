@@ -167,7 +167,8 @@ def main(argv):
     else:                                       # OpenAi Gym environment
         import gym
         from gym import spaces
-        env = gym.make(environment)               
+        render = "human" if args.postevaluate else None
+        env = gym.make(environment, render_mode=render)
         if (isinstance(env.action_space, gym.spaces.box.Box)):
             from policy import GymPolicy
             policy = GymPolicy(env, args.fileini, args.seed, test)      # with continuous action space
