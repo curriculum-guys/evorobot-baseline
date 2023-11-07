@@ -371,7 +371,7 @@ class GymPolicy(Policy):
             steps += t
             rews += rew
 
-        if save_env:
+        if save_env and len(init_state) == 200:
             rollout_env = list(init_state) + [rew]
             self.rollout_env.append(rollout_env)  # save rollout conditions
 
