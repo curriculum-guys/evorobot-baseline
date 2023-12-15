@@ -51,7 +51,6 @@ class EvoAlgo(object):
         return features
 
     def initialize_data_managers(self, env_features=[], stats_features=[]):
-        self.base_grid = generate_grid(5)
         upload_reference = 'baseline'
 
         self.initialconditions = InitialConditions(
@@ -87,7 +86,7 @@ class EvoAlgo(object):
 
     @property
     def evaluation_seed(self):
-        return self.seed + (self.cgen * self.batchSize)
+        return self.seed * self.cgen + int(self.maxsteps*self.policy_trials/100000)
 
     def generate_conditions(self, n_conditions, random_conditions=False):
         r = random.randint(1, n_conditions) if random_conditions else 1
